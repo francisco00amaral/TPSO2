@@ -1,3 +1,4 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
@@ -21,11 +22,15 @@ DWORD WINAPI ThreadProdutor(LPVOID params){
 	Data* dados = (Data*)params;
 	Ping pong; // estrutura que vai guardar o id do avião, e o seu timestamp
 	
-	_tprintf(TEXT("Thread do produtor a correr"));
 	 //esperamos que o mutex esteja livre
 	while (!dados->terminar) {
 		pong.id = dados->airplane.id;
-		// pong.tm = 100;
+		time(&pong.tm);
+		pong.timeinfo = localtime(&pong.tm);
+		pong.seconds = pong.timeinfo->tm_sec;
+		pong.minutes = pong.timeinfo->tm_min;
+		pong.hours = pong.timeinfo->tm_hour;
+		pong.totalseconds = (pong.seconds + (pong.minutes * 60) + (pong.hours * 60 * 60));
 
 		//esperamos por uma posicao para escrevermos
 		WaitForSingleObject(dados->hSemEscrita, INFINITE);
@@ -46,8 +51,7 @@ DWORD WINAPI ThreadProdutor(LPVOID params){
 		//libertamos o semaforo. temos de libertar uma posicao de leitura
 		ReleaseSemaphore(dados->hSemLeitura, 1, NULL);
 
-		_tprintf(TEXT("Produzi Aviao %d"),pong.id);
-		Sleep(5000);
+		// _tprintf(TEXT("Produzi Aviao %d no segundo %d "),pong.id,pong.totalseconds);
 	}
 
 	return 0;

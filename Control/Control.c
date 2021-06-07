@@ -1,3 +1,4 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include <stdlib.h>
 #include <stdio.h>
 #include <tchar.h>
@@ -104,11 +105,51 @@ DWORD WINAPI waitingPassInfoThread(LPVOID params) {
 	return 0;
 }
 
+
+DWORD WINAPI compareTime(LPVOID params) {
+	AerialSpace* dados = (AerialSpace*)params;
+	
+	while (!dados->terminar) {
+		HANDLE hTimer = NULL;
+		LARGE_INTEGER liDueTime;
+
+		liDueTime.QuadPart = -35000000LL;
+
+		// Create an unnamed waitable timer.
+		hTimer = CreateWaitableTimer(NULL, TRUE, NULL);
+
+		// Set a timer to wait for 3(+/-) seconds.
+		SetWaitableTimer(hTimer, &liDueTime, 0, NULL, NULL, 0);
+
+		// Wait for the timer.
+		WaitForSingleObject(hTimer, INFINITE);
+		// get local time
+		time_t tm;
+		struct tm* timeinfo;
+		time(&tm);
+		timeinfo = localtime(&tm);
+
+		int minutesSeconds = (timeinfo->tm_min * 60);
+		int hoursSeconds = (timeinfo->tm_hour * 60 * 60);
+		int sum = timeinfo->tm_sec + minutesSeconds + hoursSeconds; // (da - me o total de segundos);
+		// _tprintf(TEXT("Dentro da thread do tempo a soma atual foi de %d"), sum);
+		
+		for (int i = 0; i < dados->nAirPlanes; i++) {
+			if (sum - dados->airPlanes[i].seconds > 3){
+				_tprintf(TEXT("Perdeu-se conexao com o aviao com o id %d, a eliminar da lista de aviões!"),dados->airPlanes[i].id);
+				// apagar do array
+				deleteAirplane(&(*dados),dados->airPlanes[i]);
+			}
+		}
+	}
+
+	return 0;
+}
+
+
 DWORD WINAPI ThreadConsumidor(LPVOID params){
-	_tprintf(TEXT("Thread do consumidor a rodar"));
 	AerialSpace* dados = (AerialSpace*)params;
 	Ping pong;
-	pong.id = 200;
 
 	while (!dados->terminar) {
 		//aqui entramos na logica da aula teorica
@@ -126,17 +167,34 @@ DWORD WINAPI ThreadConsumidor(LPVOID params){
 		if (dados->memPar->posL == TAM_BUFFER)
 			dados->memPar->posL = 0;
 
+		findAirplane(&(*dados),pong);
+
 		//libertamos o mutex
 		ReleaseMutex(dados->hMutex);
 		//libertamos o semaforo. temos de libertar uma posicao de escrita
 		ReleaseSemaphore(dados->hSemEscrita, 1, NULL);
-		_tprintf(TEXT("Consumi %d.\n"),pong.id);
+		// _tprintf(TEXT("Consumi %d na segundo %d.\n"),pong.id, pong.seconds);
 	}
 
 	return 0;
-	 
 }
 
+void deleteAirplane(AerialSpace* data,AirPlane aviao) {
+	for (int i = 0; i < data->nAirPlanes; i++) {
+		if (data->airPlanes[i].id == aviao.id) {
+			data->airPlanes[i] = data->airPlanes[data->nAirPlanes + 1];
+			(data->nAirPlanes)--;
+		}
+	}
+}
+
+void findAirplane(AerialSpace *data,Ping pong) {
+	for (int i = 0; i < data->nAirPlanes; i++) {
+		if (data->airPlanes[i].id == pong.id) {
+			data->airPlanes[i].seconds = pong.totalseconds;
+		}
+	}
+}
 
 DWORD WINAPI refreshData(LPVOID params) {
 	AerialSpace* data = (AerialSpace*)params;
@@ -477,6 +535,14 @@ int _tmain(int argc, LPTSTR argv[]) {
 		return -1;
 	}
 
+	HANDLE hThread5;
+	DWORD idThread5;
+	hThread5 = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)compareTime, &aerialSpace, 0, &idThread5);
+	if (hThread5 == NULL) {
+		_tprintf(TEXT("Erro a criar a thread com id: %d"), idThread5);
+		return -1;
+	}
+
 	aerialSpace.hSemEscrita = CreateSemaphore(NULL, TAM_BUFFER, TAM_BUFFER, TEXT("SO2_SEMAFORO_ESCRITA"));
 
 	//criar semaforo que conta as leituras
@@ -559,6 +625,8 @@ int _tmain(int argc, LPTSTR argv[]) {
 	WaitForSingleObject(hThread, INFINITE);
 	WaitForSingleObject(hThread2, INFINITE);
 	WaitForSingleObject(hThread3, INFINITE);
+	WaitForSingleObject(hThread4, INFINITE);
+	WaitForSingleObject(hThread5, INFINITE);
 	CloseHandle(semaphore);
 	UnmapViewOfFile(aerialSpace.mapMemory);
 	UnmapViewOfFile(aerialSpace.memPar);

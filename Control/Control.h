@@ -46,4 +46,8 @@ void printPos(Map data);
 DWORD WINAPI refreshData(LPVOID params);
 DWORD WINAPI waitingPassInfoThread(LPVOID data); //Thread que fica à espera da info dos passageiros
 DWORD WINAPI waitingAirplaneInfoThread(LPVOID params); //Thread que fica à espera da info  dos aviões
+DWORD WINAPI compareTime(LPVOID params); // thread para comparar os tempos do 3 segundos do keepalive
+DWORD WINAPI ThreadConsumidor(LPVOID params); // thread do buffer circular
 BOOL createAirport(AerialSpace* data, TCHAR* nome, Coordenates coordenates);
+void findAirplane(AerialSpace* data);
+void deleteAirplane(AerialSpace* data, AirPlane aviao);

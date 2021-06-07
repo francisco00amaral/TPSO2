@@ -1,4 +1,5 @@
 #pragma once
+#define _CRT_SECURE_NO_WARNINGS
 #include <stdlib.h>
 #include <stdio.h>
 #include <windows.h>
@@ -13,6 +14,11 @@ typedef struct {
 typedef struct {
 	DWORD id;
 	time_t tm;
+	struct tm* timeinfo;
+	int seconds;
+	int minutes;
+	int hours;
+	int totalseconds;
 } Ping;
 
 typedef struct {
@@ -56,6 +62,7 @@ typedef struct {
 	BOOL exit;			//Caso saia do programa
 	//Variavel de resposta
 	BOOL answer;
+	int seconds;
 } AirPlane;
 
 typedef struct {
