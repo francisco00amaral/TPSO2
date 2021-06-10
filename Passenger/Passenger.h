@@ -1,13 +1,12 @@
 #pragma once
-#include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
-
+// #include <windows.h>
 
 
 typedef struct {
 	TCHAR AirportDestiny[100];
 	TCHAR name[100];
-	bool Flying;
+	BOOL Flying;
 	int TimeMaxWaiting; //Tempo máximo que o passageiro vai esperar
 } Passanger;

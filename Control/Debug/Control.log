@@ -1,15 +1,15 @@
 ﻿  Control.c
-C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Control\Control.c(12,19): warning C4133: 'function': incompatible types - from 'TCHAR *' to 'const char *'
-C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Control\Control.c(12,25): warning C4133: 'function': incompatible types - from 'TCHAR *' to 'const char *'
-C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Control\Control.c(170,26): warning C4020: 'findAirplane': too many actual parameters
-C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Control\Control.c(191,48): warning C4029: declared formal parameter list different from definition
-C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Control\Control.c(259,41): warning C4133: 'function': incompatible types - from 'TCHAR [100]' to 'const char *'
-C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Control\Control.c(259,60): warning C4133: 'function': incompatible types - from 'TCHAR [100]' to 'const char *'
-C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Control\Control.c(288,39): warning C4133: 'function': incompatible types - from 'TCHAR [100]' to 'const char *'
-C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Control\Control.c(288,63): warning C4133: 'function': incompatible types - from 'TCHAR [100]' to 'const char *'
-C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Control\Control.c(398,17): warning C4013: '_setmode' undefined; assuming extern returning int
-C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Control\Control.c(404,87): warning C4047: '=': 'HANDLE' differs in levels of indirection from 'int'
-C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Control\Control.c(590,21): warning C4018: '<': signed/unsigned mismatch
-C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Control\Control.c(230): warning C4716: 'refreshData': must return a value
-C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Control\Control.c(319): warning C4716: 'waitingAirplaneInfoThread': must return a value
+C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Control\Control.c(13,19): warning C4133: 'function': incompatible types - from 'TCHAR *' to 'const char *'
+C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Control\Control.c(13,25): warning C4133: 'function': incompatible types - from 'TCHAR *' to 'const char *'
+C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Control\Control.c(171,26): warning C4020: 'findAirplane': too many actual parameters
+C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Control\Control.c(193,48): warning C4029: declared formal parameter list different from definition
+C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Control\Control.c(261,41): warning C4133: 'function': incompatible types - from 'TCHAR [100]' to 'const char *'
+C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Control\Control.c(261,60): warning C4133: 'function': incompatible types - from 'TCHAR [100]' to 'const char *'
+C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Control\Control.c(290,39): warning C4133: 'function': incompatible types - from 'TCHAR [100]' to 'const char *'
+C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Control\Control.c(290,63): warning C4133: 'function': incompatible types - from 'TCHAR [100]' to 'const char *'
+C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Control\Control.c(400,17): warning C4013: '_setmode' undefined; assuming extern returning int
+C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Control\Control.c(406,87): warning C4047: '=': 'HANDLE' differs in levels of indirection from 'int'
+C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Control\Control.c(592,21): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Control\Control.c(232): warning C4716: 'refreshData': must return a value
+C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Control\Control.c(321): warning C4716: 'waitingAirplaneInfoThread': must return a value
   Control.vcxproj -> C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Debug\Control.exe

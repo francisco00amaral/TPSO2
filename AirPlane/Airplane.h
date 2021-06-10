@@ -46,7 +46,6 @@ typedef struct {
 
 typedef struct {
 	DWORD id; //id do processo em si DWORD
-	time_t tm;
 	Coordenates coordenates;
 	Airport airportDestiny;
 	TCHAR InitialAirport[100];

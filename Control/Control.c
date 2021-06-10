@@ -5,6 +5,7 @@
 #include <windows.h>
 #include <fcntl.h>
 #include <math.h>
+#include <stdbool.h>
 #include "../AirPlane/Airplane.h"
 #include "Control.h"
 
@@ -182,8 +183,9 @@ DWORD WINAPI ThreadConsumidor(LPVOID params){
 void deleteAirplane(AerialSpace* data,AirPlane aviao) {
 	for (int i = 0; i < data->nAirPlanes; i++) {
 		if (data->airPlanes[i].id == aviao.id) {
-			data->airPlanes[i] = data->airPlanes[data->nAirPlanes + 1];
-			(data->nAirPlanes)--;
+			data->airPlanes[i] = data->airPlanes[data->nAirPlanes - 1];
+			data->nAirPlanes--;
+			break;
 		}
 	}
 }
@@ -325,7 +327,7 @@ void addAirPlane(AerialSpace* data, AirPlane ap) {
 	data->airPlanes[data->nAirPlanes].id = ap.id;
 	data->airPlanes[data->nAirPlanes].flying = ap.flying;
 	data->airPlanes[data->nAirPlanes].speed = ap.speed;
-	data->airPlanes[data->nAirPlanes].tm = ap.tm;
+	// data->airPlanes[data->nAirPlanes].tm = ap.tm;
 	_tcscpy_s(data->airPlanes[data->nAirPlanes].InitialAirport, 100, ap.InitialAirport);
 	data->nAirPlanes++;
 }

@@ -5,6 +5,7 @@
 #include <tchar.h>
 #include <windows.h>
 #include <fcntl.h>
+#include <stdbool.h>
 #include "../SO2_TP_DLL_2021/SO2_TP_DLL_2021.h"
 #include "Airplane.h"
 
@@ -152,8 +153,8 @@ int _tmain(int argc, LPTSTR argv[]) {
 	// 1º argumento é a velocidade, 2º argumento capacidade e o 3º o nome do aeroporto onde começa
 	data.airplane.speed = _ttoi(argv[1]);
 	data.airplane.capacity = _ttoi(argv[2]);
-	time_t t = time(NULL);
-	time(&data.airplane.tm);
+	//time_t t = time(NULL);
+	//time(&data.airplane.tm);
 	_tcscpy_s(data.airplane.InitialAirport, 100, argv[3]);
 	data.airplane.flying = false;
 	data.airplane.exit = false;
