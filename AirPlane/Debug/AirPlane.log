@@ -1,5 +1,7 @@
 ﻿  Airplane.c
 C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\AirPlane\Airplane.c(15,19): warning C4133: 'function': incompatible types - from 'TCHAR *' to 'const char *'
 C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\AirPlane\Airplane.c(15,25): warning C4133: 'function': incompatible types - from 'TCHAR *' to 'const char *'
-C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\AirPlane\Airplane.c(131,17): warning C4013: '_setmode' undefined; assuming extern returning int
+C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\AirPlane\Airplane.c(142,17): warning C4013: '_setmode' undefined; assuming extern returning int
+C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\AirPlane\Airplane.c(356,45): warning C4133: 'function': incompatible types - from 'TCHAR [100]' to 'const char *'
+C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\AirPlane\Airplane.c(356,80): warning C4133: 'function': incompatible types - from 'TCHAR [100]' to 'const char *'
   AirPlane.vcxproj -> C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Debug\AirPlane.exe

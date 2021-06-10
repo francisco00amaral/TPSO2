@@ -57,6 +57,7 @@ typedef struct {
 	BOOL startingLife;  //Pedido no inicio do programa
 	BOOL boarding;		//Pedido para iniciar viagem
 	BOOL requestFlying;
+	BOOL finishFly;    //Dizer que chegou ao destino
 	BOOL requestDestiny;
 	BOOL exit;			//Caso saia do programa
 	//Variavel de resposta

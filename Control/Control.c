@@ -10,7 +10,7 @@
 #include "Control.h"
 
 BOOL compare(TCHAR* arg1, TCHAR* arg2) {
-	if (_strcmpi(arg1, arg2) == 0) {
+	if (_tcscmp(arg1, arg2) == 0) {
 		return true;
 	}
 	return false;
@@ -258,7 +258,7 @@ DWORD WINAPI waitingAirplaneInfoThread(LPVOID params) {
 				aux--;
 			if (aux == 0) {
 				for (int i = 0; i < data->nAirports; i++) {
-					if (_strcmpi(data->airports[i].name, es.InitialAirport) == 0) {
+					if (_tcscmp(data->airports[i].name, es.InitialAirport) == 0) {
 						aux++;
 						es.coordenates.x = data->airports[i].coordenates.x;
 						es.coordenates.y = data->airports[i].coordenates.y;
@@ -283,20 +283,37 @@ DWORD WINAPI waitingAirplaneInfoThread(LPVOID params) {
 			}
 			SetEvent(data->hEvent3);
 		}
+
+		else if(es.finishFly == true) {
+			for(int i = 0; i < data->nAirPlanes; i++) {
+				if(data->airPlanes[i].id == es.id) {
+					for(int j = 0; j < data->nAirports; j++) {
+						if(data->airports[j].coordenates.x == data->airPlanes[i].coordenates.x && 
+						data->airports[j].coordenates.y == data->airPlanes[i].coordenates.y) {
+							_tcscpy_s(data->airPlanes[i].InitialAirport, 100, data->airports[j].name);
+							break;
+						}
+					}
+					break;
+				}
+			}
+		}
 		else if(es.requestDestiny == true) {
 
 			int aux = 0;
 			for(int i = 0; i < data->nAirports; i++) {
-				if(_strcmpi(data->airports[i].name, es.airportDestiny.name) == 0){
+				if(_tcscmp(data->airports[i].name, es.airportDestiny.name) == 0){
 					aux++;
 					es.airportDestiny.coordenates.x = data->airports[i].coordenates.x;
 					es.airportDestiny.coordenates.y = data->airports[i].coordenates.y;
 					_tprintf(TEXT("\n%d %d\n"), es.airportDestiny.coordenates.x, es.airportDestiny.coordenates.y);
+					break;
 				}
 			}
 			if (aux <= 0) // nao existe o aeroporto
 				es.answer = false;
-			else{
+			else {
+				_tprintf(TEXT("ENTROUUUUUUUUUUUUUUUUUUUUUUUUUU\n"));
 				es.answer = true;
 			}
 		}
@@ -306,11 +323,10 @@ DWORD WINAPI waitingAirplaneInfoThread(LPVOID params) {
 				if (es.id == data->airPlanes[i].id)
 					data->airPlanes[i].flying = true;
 			}
-
+			es.answer = true;
 			SetEvent(data->hEvent3);
 		}
 
-		ZeroMemory(data->airPlaneMemory, sizeof(AirPlane));
 		CopyMemory(data->airPlaneMemory, &es, sizeof(AirPlane));
 		SetEvent(data->hEvent2);
 		ResetEvent(data->hEvent);
@@ -403,7 +419,8 @@ int _tmain(int argc, LPTSTR argv[]) {
 
 	//Verificação de existir apenas uma instancia
 	HANDLE semaphore;
-	if (semaphore = OpenSemaphore(SEMAPHORE_ALL_ACCESS, FALSE, TEXT("Semaphore")) != NULL) {
+	semaphore = OpenSemaphore(SEMAPHORE_ALL_ACCESS, FALSE, TEXT("Semaphore"));
+	if (semaphore != NULL) {
 		_tprintf(TEXT("Já existe um programa a correr"));
 		return -1;
 	}

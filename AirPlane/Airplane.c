@@ -77,6 +77,8 @@ void resetRequests(AirPlane* ap) {
 	ap->startingLife = false;
 	ap->requestDestiny = false;
 	ap->requestFlying = false;
+	ap->finishFly = false;
+	ap->answer = false;
 }
 
 void startFlying(Data* data) {
@@ -101,9 +103,18 @@ void startFlying(Data* data) {
 
 		if (aux1 == 1) {
 			_tprintf(TEXT("O avião chegou ao destino\n"));
+			_tcscpy_s(data->airplane.InitialAirport, 100, data->airplane.airportDestiny.name);
+			resetRequests(&data->airplane);
+			data->airplane.finishFly = true;
+			WaitForSingleObject(data->hMutexMemory, INFINITE);
+			ZeroMemory(data->memory, sizeof(AirPlane));
+
+			CopyMemory(data->memory, &data->airplane, sizeof(AirPlane));
+			SetEvent(data->hEvent);
+			ReleaseMutex(data->hMutexMemory);
 			break;
 		}
-		_tprintf(TEXT("%d %d"), data->airplane.coordenates.x, data->airplane.coordenates.y);
+		_tprintf(TEXT("A sobrevoar sobre x: %d y: %d\n"), data->airplane.coordenates.x, data->airplane.coordenates.y);
 		int aux;
 		do {
 			aux = 1;
@@ -342,22 +353,27 @@ int _tmain(int argc, LPTSTR argv[]) {
 
 		else if (compare(command, TEXT("fly"))) {
 			// logica de começar a voar  - onde esta sempre a usar a dll
-			data.airplane.flying = true;
-			resetRequests(&data.airplane);
-			data.airplane.requestFlying = true;
-			WaitForSingleObject(data.hMutexMemory, INFINITE);
-			ZeroMemory(data.memory, sizeof(AirPlane));
+			if (_strcmpi(data.airplane.InitialAirport, data.airplane.airportDestiny.name) == 0) {
+				_tprintf(TEXT("Nao podes voar para onde ja estas\n"));
+			}
+			else {
+				resetRequests(&data.airplane);
+				data.airplane.flying = true;
+				data.airplane.requestFlying = true;
+				WaitForSingleObject(data.hMutexMemory, INFINITE);
+				ZeroMemory(data.memory, sizeof(AirPlane));
 
-			CopyMemory(data.memory, &data.airplane, sizeof(AirPlane));
-			SetEvent(data.hEvent);
-			WaitForSingleObject(data.hEvent2, INFINITE);
-			CopyMemory(&data.airplane, data.memory, sizeof(AirPlane));
-			ResetEvent(data.hEvent2);
-			ReleaseMutex(data.hMutexMemory);
-			if (data.airplane.answer == true)
-				startFlying(&data);
-			else
-				_tprintf(TEXT("Aeroporto destino nao existe\n"));
+				CopyMemory(data.memory, &data.airplane, sizeof(AirPlane));
+				SetEvent(data.hEvent);
+				WaitForSingleObject(data.hEvent2, INFINITE);
+				CopyMemory(&data.airplane, data.memory, sizeof(AirPlane));
+				ResetEvent(data.hEvent2);
+				ReleaseMutex(data.hMutexMemory);
+				if (data.airplane.answer == true)
+					startFlying(&data);
+				else
+					_tprintf(TEXT("Aeroporto destino nao existe\n"));
+			}
 		}else if (compare(command, TEXT("help"))){
 			listAllCommands();
 		}
@@ -376,7 +392,7 @@ int _tmain(int argc, LPTSTR argv[]) {
 
 
 	// Fechar as cenas todas
-
+	WaitForSingleObject(hThread, INFINITE);
 	UnmapViewOfFile(data.memory);
 	UnmapViewOfFile(data.memPar);
 

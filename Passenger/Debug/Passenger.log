@@ -1,0 +1,3 @@
+﻿  Passenger.c
+C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Passenger\Passenger.c(8,17): warning C4013: '_setmode' undefined; assuming extern returning int
+  Passenger.vcxproj -> C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Debug\Passenger.exe
