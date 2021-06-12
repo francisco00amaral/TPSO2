@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <windows.h>
 #include <time.h>
-#include "..\Passenger\Passenger.h"
 #define TAM_BUFFER 10
 
 typedef struct {
@@ -40,8 +39,6 @@ typedef struct {
 typedef struct {
 	Coordenates coordenates;
 	TCHAR name[100];
-	Passanger passengers[20];
-	int nPassengers;
 } Airport;
 
 typedef struct {

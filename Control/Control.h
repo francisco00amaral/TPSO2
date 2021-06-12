@@ -7,6 +7,12 @@
 #include "../AirPlane/Airplane.h"
 #define DIM 10
 
+typedef struct {
+	Passanger passenger;
+	HANDLE pipeControlToPass;
+	HANDLE pipePassToControl;
+} InfoPassenger;
+
 
 typedef struct {
 	AirPlane* airPlanes;
@@ -15,6 +21,7 @@ typedef struct {
 	Airport* airports;
 	int nAirports;
 	int maxAirports;
+	//InfoPassenger 
 	//Variaveis de controlo:
 	BOOL endThreadReceiveInfo; //1 caso seja para terminar a thread
 	HANDLE hMutex;
@@ -52,3 +59,7 @@ DWORD WINAPI menuPrincipal(LPVOID params); // menu
 BOOL createAirport(AerialSpace* data, TCHAR* nome, Coordenates coordenates);
 void findAirplane(AerialSpace* data);
 void deleteAirplane(AerialSpace* data, AirPlane aviao);
+LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK TrataEventosCriarAeroporto(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK TrataEventosVerAvioes(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK TrataEventosVerAeroportos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam);

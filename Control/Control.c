@@ -3,11 +3,15 @@
 #include <stdio.h>
 #include <tchar.h>
 #include <windows.h>
+#include <Windowsx.h>
 #include <fcntl.h>
 #include <math.h>
 #include <stdbool.h>
+#include "resource.h"
 #include "../AirPlane/Airplane.h"
 #include "Control.h"
+
+HINSTANCE hInstance;
 
 BOOL compare(TCHAR* arg1, TCHAR* arg2) {
 	if (_tcscmp(arg1, arg2) == 0) {
@@ -297,6 +301,15 @@ DWORD WINAPI waitingAirplaneInfoThread(LPVOID params) {
 					break;
 				}
 			}
+
+			for (int i = 0; i < data->mapMemory->tam; i++) {
+				if (es.id == data->mapMemory->posBusy[i].id) {
+					data->mapMemory->posBusy[i] = data->mapMemory->posBusy[data->mapMemory->tam - 1];
+					data->mapMemory->tam--;
+					break;
+					
+				}
+			}
 		}
 		else if(es.requestDestiny == true) {
 
@@ -313,7 +326,6 @@ DWORD WINAPI waitingAirplaneInfoThread(LPVOID params) {
 			if (aux <= 0) // nao existe o aeroporto
 				es.answer = false;
 			else {
-				_tprintf(TEXT("ENTROUUUUUUUUUUUUUUUUUUUUUUUUUU\n"));
 				es.answer = true;
 			}
 		}
@@ -410,15 +422,24 @@ void listAllCommands() {
 }
 
 
-int _tmain(int argc, LPTSTR argv[]) {
 
-#ifdef UNICODE
-	(void) _setmode(_fileno(stdin), _O_WTEXT);
-	(void) _setmode(_fileno(stdout), _O_WTEXT);
-#endif
+int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nCmdShow)
+{
+	HWND hWnd;
+	MSG lpMsg;
+	WNDCLASSEX wcApp;
 
-	//Verificação de existir apenas uma instancia
+	wcApp.cbSize = sizeof(WNDCLASSEX);
+	wcApp.hInstance = hInst;
+	hInstance = hInst;
+
+	wcApp.lpszClassName = TEXT("Control");
+	wcApp.lpfnWndProc = TrataEventos;
+
+	wcApp.style = CS_HREDRAW | CS_VREDRAW;
+	AerialSpace aerialSpace;
 	HANDLE semaphore;
+	//Verificação de existir apenas uma instancia
 	semaphore = OpenSemaphore(SEMAPHORE_ALL_ACCESS, FALSE, TEXT("Semaphore"));
 	if (semaphore != NULL) {
 		_tprintf(TEXT("Já existe um programa a correr"));
@@ -427,14 +448,12 @@ int _tmain(int argc, LPTSTR argv[]) {
 
 	//Semaforo para controlar que só existe um control
 	semaphore = CreateSemaphore(NULL, 1, 1, TEXT("Semaphore"));
-	if(semaphore == NULL){
+	if (semaphore == NULL) {
 		_tprintf(TEXT("Creating semaphore failed.\n"));
 		return -1;
 	}
-	
 
 	//Criação das variaveis
-	AerialSpace aerialSpace;
 	aerialSpace.maxAirPlanes = createKeyAirplane();
 	aerialSpace.maxAirports = createKeyAirport();
 
@@ -464,7 +483,7 @@ int _tmain(int argc, LPTSTR argv[]) {
 	//0 porque nao ha nada para ser lido e depois podemos ir até um maximo de max airplanes definidos na estrutura para serem lidas
 	maxAirplaneSemaphore = CreateSemaphore(NULL, aerialSpace.maxAirPlanes, aerialSpace.maxAirPlanes, TEXT("Max airplanes"));
 
-	if(semaphore == NULL){
+	if (semaphore == NULL) {
 		_tprintf(TEXT("Creating semaphore failed.\n"));
 		return -1;
 	}
@@ -491,7 +510,7 @@ int _tmain(int argc, LPTSTR argv[]) {
 
 
 	aerialSpace.hMutex = CreateMutex(NULL, FALSE, TEXT("SO2_MUTEX"));
-	if(aerialSpace.hMutex == NULL){
+	if (aerialSpace.hMutex == NULL) {
 		_tprintf(TEXT("Erro a criar o mutex"));
 		return -1;
 	}
@@ -518,7 +537,7 @@ int _tmain(int argc, LPTSTR argv[]) {
 		return -1;
 	}
 
-	aerialSpace.airPlaneMemory = (AirPlane*) MapViewOfFile(aerialSpace.airPlaneObjMap, FILE_MAP_ALL_ACCESS, 0, 0, 0);
+	aerialSpace.airPlaneMemory = (AirPlane*)MapViewOfFile(aerialSpace.airPlaneObjMap, FILE_MAP_ALL_ACCESS, 0, 0, 0);
 
 	if (aerialSpace.airPlaneMemory == NULL) {
 		_tprintf(TEXT("Erro a mapear o ficheiro\n"));
@@ -598,60 +617,251 @@ int _tmain(int argc, LPTSTR argv[]) {
 	if (hThread4 == NULL) {
 		_tprintf(TEXT("Error a criar a thread com o id %d"), idThread4);
 	}
+	wcApp.lpszMenuName = MAKEINTRESOURCE(ID_MENU);
+	wcApp.hCursor = LoadCursor(NULL, IDC_ARROW);
+	wcApp.hIconSm = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_ICON1));
+	wcApp.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_ICON1));
 
-	_tprintf(TEXT("[help] para mostrar todos os comandos disponíveis.\n\n"));
+	wcApp.cbClsExtra = sizeof(aerialSpace);
+	wcApp.cbWndExtra = 0;
+	wcApp.hbrBackground = CreateSolidBrush(RGB(220, 220, 220));
 
-	while (1) {
-		TCHAR command[256];
-		_fgetts(command, 256, stdin);
-		command[_tcslen(command) - 1] = '\0';
-		//Mete tudo para minusculas para comparar
-		for (int i = 0; i < _tcslen(command); i++) {
-			command[i] = tolower(command[i]);
-
-		}
-		//Menu
-		
-		if (compare(command, TEXT("createairport"))) {
-			TCHAR name[200];
-			Coordenates coo;
-			_tprintf(TEXT("Nome do aeroporto: "));
-			_fgetts(name, 200, stdin);
-			name[_tcslen(name) - 1] = '\0';
-			_tprintf(TEXT("Coordenadas (x y): "));
-			_tscanf_s(TEXT("%d %d"), &coo.x, &coo.y);
-			createAirport(&aerialSpace, name, coo);
-		}
-		else if (compare(command, TEXT("list"))){
-			listAirports(aerialSpace.airports, aerialSpace.nAirports);
-			listAirPlanes(aerialSpace.airPlanes, aerialSpace.nAirPlanes);
-		}
-		else if (compare(command, TEXT("help")))
-			listAllCommands();
-		else if (compare(command, TEXT("exit")))
-			break;
-		else
-			_tprintf(TEXT("Comando inválido\n"));
+	if (!RegisterClassEx(&wcApp)) {
+		_tprintf(TEXT("%d"),GetLastError());
+		return(0);
 	}
 
-	//Esperar terminar tudo
-	free(aerialSpace.airports);
-	free(aerialSpace.airPlanes);
-	ReleaseSemaphore(semaphore, 1, NULL);
-	aerialSpace.endThreadReceiveInfo = true;
-	SetEvent(aerialSpace.hEvent);
-	SetEvent(aerialSpace.hEvent3);
-	WaitForSingleObject(hThread, INFINITE);
-	WaitForSingleObject(hThread2, INFINITE);
-	WaitForSingleObject(hThread3, INFINITE);
-	WaitForSingleObject(hThread4, INFINITE);
-	WaitForSingleObject(hThread5, INFINITE);
-	CloseHandle(semaphore);
-	UnmapViewOfFile(aerialSpace.mapMemory);
-	UnmapViewOfFile(aerialSpace.memPar);
-	CloseHandle(aerialSpace.aerialMapObjMap);
-	CloseHandle(hThread);
-	CloseHandle(hThread2);
-	CloseHandle(hThread3);
-	return 0;
+	hWnd = CreateWindow(
+		TEXT("Control"),
+		TEXT("Control"),
+		WS_OVERLAPPEDWINDOW,
+		CW_USEDEFAULT,
+		CW_USEDEFAULT,
+		1000,
+		1000,
+		(HWND)HWND_DESKTOP,
+		(HMENU)NULL,
+		(HINSTANCE)hInstance,
+		0);
+
+	// dadosPartilhados.numOperacoes = 5; // Apenas para testar...
+	LONG_PTR x = SetWindowLongPtr(hWnd, GWLP_USERDATA, (LONG_PTR)&aerialSpace);
+
+	ShowWindow(hWnd, nCmdShow);
+
+
+	while (GetMessage(&lpMsg, NULL, 0, 0))
+	{
+			TranslateMessage(&lpMsg);
+			DispatchMessage(&lpMsg);	
+	}
+
+	return((int)lpMsg.wParam);
+}
+
+LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam)
+{
+	AerialSpace* aerialSpace;
+	aerialSpace = (AerialSpace*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
+
+	switch (messg)
+	{
+		// evento de criação de janela
+	case WM_CREATE:
+		break;
+	case WM_COMMAND:
+		switch (LOWORD(wParam))
+		{
+		case IDM_CRIAR_AEROPORTO:
+			// lida com a dialogbox
+			// 1º contexto onde vai ser executada -> NULL porque é no contexto atual
+			// 2º ID da dialogbox em si
+			// 3º janela mae da dialogbox -> ou NULL(sistema assume que nao estou a usar uma janela modal e permite trabalhar nessa janela e na que está atrás)
+			// ou o handle da janela principal
+			// 4º serve para tratar os eventos das dialogbox
+			DialogBox(NULL, MAKEINTRESOURCE(ID_CRIAR_AEROPORTO), hWnd, TrataEventosCriarAeroporto);
+			break;
+		case IDM_LISTAVIOES :
+			DialogBox(NULL, MAKEINTRESOURCE(IDD_VER_AVIOES), hWnd, TrataEventosVerAvioes);
+			break;
+		case IDM_LISTAEROPORTOS :
+			DialogBox(NULL, MAKEINTRESOURCE(IDD_VERAEROPORTOS), hWnd, TrataEventosVerAeroportos);
+			break;
+		}
+			
+		break;
+
+	case WM_DESTROY:
+		free(aerialSpace->airports);
+		free(aerialSpace->airPlanes);
+		//ReleaseSemaphore(semaphore, 1, NULL);
+		aerialSpace->endThreadReceiveInfo = true;
+		SetEvent(aerialSpace->hEvent);
+		SetEvent(aerialSpace->hEvent3);
+		//WaitForSingleObject(hThread, INFINITE);
+		//WaitForSingleObject(hThread2, INFINITE);
+		//WaitForSingleObject(hThread3, INFINITE);
+		//WaitForSingleObject(hThread4, INFINITE);
+		//WaitForSingleObject(hThread5, INFINITE);
+		//CloseHandle(semaphore);
+		UnmapViewOfFile(aerialSpace->mapMemory);
+		UnmapViewOfFile(aerialSpace->memPar);
+		CloseHandle(aerialSpace->aerialMapObjMap);
+		//CloseHandle(hThread);
+		//CloseHandle(hThread2);
+		//CloseHandle(hThread3);
+		PostQuitMessage(0);
+		break;
+
+	default:
+		return DefWindowProc(hWnd, messg, wParam, lParam);
+		break;
+	}
+
+	return(0);
+}
+
+LRESULT CALLBACK TrataEventosVerAvioes(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam) {
+	HWND aux = GetParent(hWnd); // GetParent vai servir para depois conseguir ir buscar a struct declarada no main e nao usar vars globais
+	AerialSpace* aerial = (AerialSpace*)GetWindowLongPtr(aux, GWLP_USERDATA);
+	int i;
+	TCHAR message[50];
+	HWND hwndList;
+	// quando uma dialogbox é inicializava, ela recebe um evento chamado de WM_INITDIALOG
+	// no caso das janelas, é um evento chamado de WM_CREATE
+
+	switch (messg)
+	{
+	case WM_INITDIALOG:
+
+		hwndList = GetDlgItem(hWnd, IDC_VER_AVIOES);
+		SendMessage(hwndList, LB_RESETCONTENT, 0, 0);
+
+		// enviamos uma mensagem para cada tipo da lista
+		for (i = 0; i < aerial->nAirPlanes; i++) {
+			_stprintf(message, TEXT("Avião %d na coordenada x: %d y:%d"), aerial->airPlanes[i].id, aerial->airPlanes[i].coordenates.x, aerial->airPlanes[i].coordenates.y);
+			SendMessage(hwndList, LB_ADDSTRING, 0, (LPARAM)message);
+		}
+			
+		break;
+
+	case WM_COMMAND:
+		// o LOWORD(wParam) traz o ID onde foi carregado 
+		// se carregou no OK
+		if (LOWORD(wParam) == IDOK)
+		{
+			// GetDlgItemText() vai à dialogbox e vai buscar o input do user
+			//GetDlgItemText(hWnd, ID, username, 16);
+			//MessageBox(hWnd, username, TEXT("Username"), MB_OK | MB_ICONINFORMATION);
+		}
+		// se carregou no CANCEL
+		else if (LOWORD(wParam) == IDCANCEL)
+		{
+			EndDialog(hWnd, 0);
+			return TRUE;
+		}
+		break;
+
+	case WM_CLOSE:
+		EndDialog(hWnd, 0);
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
+LRESULT CALLBACK TrataEventosVerAeroportos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam) {
+	HWND aux = GetParent(hWnd); // GetParent vai servir para depois conseguir ir buscar a struct declarada no main e nao usar vars globais
+	AerialSpace* aerial = (AerialSpace*)GetWindowLongPtr(aux, GWLP_USERDATA);
+	TCHAR message[50];
+	HWND hwndList;
+	int i;
+
+	switch (messg)
+	{
+	case WM_INITDIALOG:
+
+		hwndList = GetDlgItem(hWnd, IDC_VER_AEROPORTOS);
+		SendMessage(hwndList, LB_RESETCONTENT, 0, 0);
+
+		// enviamos uma mensagem para cada tipo da lista
+		for (i = 0; i < aerial->nAirports; i++) {
+			_stprintf(message, TEXT("Aeroporto %s na coordenada x: %d y:%d"), aerial->airports[i].name, aerial->airports[i].coordenates.x, aerial->airports[i].coordenates.y);
+			SendMessage(hwndList, LB_ADDSTRING, 0, (LPARAM)message);
+		}
+
+		break;
+	case WM_COMMAND:
+		// o LOWORD(wParam) traz o ID onde foi carregado 
+		// se carregou no OK
+		if (LOWORD(wParam) == IDOK)
+		{
+			// GetDlgItemText() vai à dialogbox e vai buscar o input do user
+			//GetDlgItemText(hWnd, ID, username, 16);
+			//MessageBox(hWnd, username, TEXT("Username"), MB_OK | MB_ICONINFORMATION);
+		}
+		// se carregou no CANCEL
+		else if (LOWORD(wParam) == IDCANCEL)
+		{
+			EndDialog(hWnd, 0);
+			return TRUE;
+		}
+		break;
+
+	case WM_CLOSE:
+		EndDialog(hWnd, 0);
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
+LRESULT CALLBACK TrataEventosCriarAeroporto(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam) {
+	HWND aux = GetParent(hWnd); // GetParent vai servir para depois conseguir ir buscar a struct declarada no main e nao usar vars globais
+	AerialSpace* aerial = (AerialSpace *)GetWindowLongPtr(aux, GWLP_USERDATA);
+	TCHAR name[100];
+	Coordenates coordenates;
+	coordenates.x = 0;
+	coordenates.y = 0;
+	BOOL flag;
+	BOOL flagY;
+
+	switch (messg)
+	{
+	case WM_COMMAND:
+
+		// o LOWORD(wParam) traz o ID onde foi carregado 
+		// se carregou no OK
+		if (LOWORD(wParam) == IDOK)
+		{
+			// GetDlgItemText() vai à dialogbox e vai buscar o input do user
+			GetDlgItemText(hWnd, IDC_NOME_AERO, name, 16);
+			coordenates.x = GetDlgItemInt(hWnd, IDC_COORD_X, &flag, FALSE);
+			coordenates.y = GetDlgItemInt(hWnd, IDC_COORD_X, &flagY, FALSE);
+
+			if (flag && flagY) {
+				if (createAirport(aerial, name, coordenates) == false) {
+					MessageBox(NULL, TEXT("Invalid airport"), TEXT("Error"), MB_OK | MB_ICONWARNING);
+				}
+				else {
+				MessageBox(NULL, name, TEXT("Created a new airport"), MB_OK | MB_ICONINFORMATION);
+				}
+			}
+			else {
+				MessageBox(NULL, TEXT("Error obtaining value"), TEXT("Error"), MB_ICONEXCLAMATION | MB_OK);
+			}
+		}
+		// se carregou no CANCEL
+		else if (LOWORD(wParam) == IDCANCEL)
+		{
+			EndDialog(hWnd, 0);
+			return TRUE;
+		}
+
+		break;
+
+	case WM_CLOSE:
+		EndDialog(hWnd, 0);
+		return TRUE;
+	}
 }
