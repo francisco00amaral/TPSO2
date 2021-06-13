@@ -25,6 +25,12 @@ int xBitmap; // posicao onde o bitmap vai ser desenhado
 int yBitmap;
 int xBitmapAeroporto; // posicao onde o bitmap vai ser desenhado
 int yBitmapAeroporto;
+int x[10];
+int y[10];
+int total;
+int xAvioes[10];
+int yAvioes[10];
+int totalAvioes;
 
 int limDir; // limite direito
 int limDirAeroporto; // limite direito
@@ -380,6 +386,39 @@ void addAirPlane(AerialSpace* data, AirPlane ap) {
 	// data->airPlanes[data->nAirPlanes].tm = ap.tm;
 	_tcscpy_s(data->airPlanes[data->nAirPlanes].InitialAirport, 100, ap.InitialAirport);
 	data->nAirPlanes++;
+	total = data->nAirPlanes;
+	xAvioes[total - 1] = ap.coordenates.x;
+	yAvioes[total - 1] = ap.coordenates.y;
+	HDC hdc; // representa a propria janela
+	RECT rect;
+
+	// carregar o bitmap
+	hBmp = (HBITMAP)LoadImage(NULL, TEXT("bitmap1.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+	GetObject(hBmp, sizeof(bmp), &bmp); // vai buscar info sobre o handle do bitmap
+
+	hdc = GetDC(hWndGlobal);
+	// criamos copia do device context e colocar em memoria
+	bmpDC = CreateCompatibleDC(hdc);
+	// aplicamos o bitmap ao device context
+	SelectObject(bmpDC, hBmp);
+	// SelectObject(bmpDC, hBmpAeroporto);
+
+	ReleaseDC(hWndGlobal, hdc);
+
+	// EXEMPLO
+	// 800 px de largura, imagem 40px de largura
+	// ponto central da janela 400 px(800/2)
+	// imagem centrada, começar no 380px e acabar no 420 px
+	// (800/2) - (40/2) = 400 - 20 = 380px
+
+	// definir as posicoes inicias da imagem
+	GetClientRect(hWndGlobal, &rect);
+	xBitmap = (rect.right / 2) - (bmp.bmWidth / 2);
+	yBitmap = (rect.bottom / 2) - (bmp.bmHeight / 2);
+
+
+	// limite direito é a largura da janela - largura da imagem
+	limDir = rect.right - bmp.bmWidth;
 }
 
 BOOL createAirport(AerialSpace* data, TCHAR* nome, Coordenates coordenates) {
@@ -445,6 +484,8 @@ void listAllCommands() {
 
 // Mexe na posição x da imagem de forma a que a imagem se vá movendo
 DWORD WINAPI MovimentaImagem(LPVOID lParam) {
+	AerialSpace* data = (AerialSpace*)lParam;
+
 	int dir = 1; // 1 para a direita, -1 para a esquerda
 	int salto = 2; // quantidade de pixeis que a imagem salta de cada vez
 
@@ -453,7 +494,11 @@ DWORD WINAPI MovimentaImagem(LPVOID lParam) {
 		WaitForSingleObject(hMutexBitMap, INFINITE);
 
 		// movimentação
-		xBitmap = xBitmap + (dir * salto);
+		for (int i = 0; i < data->nAirPlanes; i++) {
+			if (data->airPlanes[i].flying == 1) {
+				xBitmap = xBitmap + data->airPlanes[i].coordenates.x;
+			}
+		}
 
 		//fronteira À esquerda
 		if (xBitmap <= 0) {
@@ -461,7 +506,7 @@ DWORD WINAPI MovimentaImagem(LPVOID lParam) {
 			dir = 1;
 		}
 		// limite direito
-		else if (xBitmap >= limDir) {
+		else if (xBitmap >= 1000) {
 			xBitmap = limDir;
 			dir = -1;
 		}
@@ -473,7 +518,6 @@ DWORD WINAPI MovimentaImagem(LPVOID lParam) {
 		Sleep(1);
 	}
 	return 0;
-
 }
 
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nCmdShow)
@@ -697,20 +741,13 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nC
 		(HINSTANCE)hInstance,
 		0);
 
+
 	HDC hdc; // representa a propria janela
 	RECT rect;
 
 	// carregar o bitmap
-	hBmp = (HBITMAP)LoadImage(NULL, TEXT("bitmap1.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-	GetObject(hBmp, sizeof(bmp), &bmp); // vai buscar info sobre o handle do bitmap
-
-
 	hdc = GetDC(hWnd);
-	// criamos copia do device context e colocar em memoria
-	bmpDC = CreateCompatibleDC(hdc);
-	// aplicamos o bitmap ao device context
-	SelectObject(bmpDC, hBmp);
-	// SelectObject(bmpDC, hBmpAeroporto);
+	
 
 	ReleaseDC(hWnd, hdc);
 	
@@ -733,7 +770,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nC
 	hMutexBitMap = CreateMutex(NULL, FALSE, NULL);
 
 	// criar a thread;
-	CreateThread(NULL, 0, MovimentaImagem, NULL, 0, NULL);
+	CreateThread(NULL, 0, MovimentaImagem, &aerialSpace, 0, NULL);
 
 	ShowWindow(hWnd, nCmdShow);	// "hWnd"= handler da janela, devolvido por
 					  // "CreateWindow"; "nCmdShow"= modo de exibição (p.e.
@@ -759,8 +796,8 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nC
 
 LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam)
 {
-	AerialSpace* aerialSpace;
-	aerialSpace = (AerialSpace*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
+	HWND aux = GetParent(hWnd); // GetParent vai servir para depois conseguir ir buscar a struct declarada no main e nao usar vars globais
+	AerialSpace* aerialSpace = (AerialSpace*)GetWindowLongPtr(aux, GWLP_USERDATA);
 	HDC hdc;
 	PAINTSTRUCT ps;
 	RECT rect;
@@ -786,8 +823,12 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 
 		WaitForSingleObject(hMutexBitMap, INFINITE);
 		// operacoes de escrita da imagem - BitBlt
-		BitBlt(memDC, xBitmap, yBitmap, bmp.bmWidth, bmp.bmHeight, bmpDC, 0, 0, SRCCOPY);
-		BitBlt(memDC, xBitmapAeroporto, yBitmapAeroporto, bmpAeroporto.bmWidth, bmpAeroporto.bmHeight, bmpDCAeroporto, 0, 0, SRCCOPY);
+		for (int i = 0; i < totalAvioes; i++) {
+			BitBlt(memDC, 500, 500, bmp.bmWidth, bmp.bmHeight, bmpDC, 0, 0, SRCCOPY);
+		}
+		for (int i = 0; i < total; i++) {
+			BitBlt(memDC, x[i], y[i], bmpAeroporto.bmWidth, bmpAeroporto.bmHeight, bmpDCAeroporto, 0, 0, SRCCOPY);
+		}
 		
 
 		ReleaseMutex(hMutexBitMap);
@@ -1005,8 +1046,12 @@ LRESULT CALLBACK TrataEventosCriarAeroporto(HWND hWnd, UINT messg, WPARAM wParam
 				SelectObject(bmpDCAeroporto, hBmpAeroporto);
 				ReleaseDC(hWnd, hdcAeroporto);
 				GetClientRect(hWnd, &rect);
-				xBitmapAeroporto = coordenates.x;
-				yBitmapAeroporto = coordenates.y;
+				
+				total = aerial->nAirports;
+
+				x[total-1] = coordenates.x;
+				y[total-1] = coordenates.y;
+				
 				limDirAeroporto = rect.right - bmpAeroporto.bmWidth;
 
 				MessageBox(hWnd, name, TEXT("Created a new airport"), MB_OK | MB_ICONINFORMATION);
