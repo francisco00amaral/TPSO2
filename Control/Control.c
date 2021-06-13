@@ -12,6 +12,28 @@
 #include "Control.h"
 
 HINSTANCE hInstance;
+//BITMAP
+// uma vez que temos de usar estas vars tanto na main como na funcao de tratamento de eventos
+// nao ha uma maneira de fugir ao uso de vars globais, dai estarem aqui
+HBITMAP hBmp; // handle para o bitmap
+HBITMAP hBmpAeroporto;
+HDC bmpDC; // hdc do bitmap
+HDC bmpDCAeroporto;
+BITMAP bmp; // informação sobre o bitmap
+BITMAP bmpAeroporto;
+int xBitmap; // posicao onde o bitmap vai ser desenhado
+int yBitmap;
+int xBitmapAeroporto; // posicao onde o bitmap vai ser desenhado
+int yBitmapAeroporto;
+
+int limDir; // limite direito
+int limDirAeroporto; // limite direito
+
+HWND hWndGlobal; // handle para a janela
+HANDLE hMutexBitMap;
+
+HDC memDC = NULL; // copia do device context que esta em memoria, tem de ser inicializado a null
+HBITMAP hBitmapDB; // copia as caracteristicas da janela original para a janela que vai estar em memoria
 
 BOOL compare(TCHAR* arg1, TCHAR* arg2) {
 	if (_tcscmp(arg1, arg2) == 0) {
@@ -421,7 +443,38 @@ void listAllCommands() {
 	_tprintf(TEXT("exit\n\n"));
 }
 
+// Mexe na posição x da imagem de forma a que a imagem se vá movendo
+DWORD WINAPI MovimentaImagem(LPVOID lParam) {
+	int dir = 1; // 1 para a direita, -1 para a esquerda
+	int salto = 2; // quantidade de pixeis que a imagem salta de cada vez
 
+	while (1) {
+		// Aguarda que o mutex esteja livre
+		WaitForSingleObject(hMutexBitMap, INFINITE);
+
+		// movimentação
+		xBitmap = xBitmap + (dir * salto);
+
+		//fronteira À esquerda
+		if (xBitmap <= 0) {
+			xBitmap = 0;
+			dir = 1;
+		}
+		// limite direito
+		else if (xBitmap >= limDir) {
+			xBitmap = limDir;
+			dir = -1;
+		}
+		//liberta mutex
+		ReleaseMutex(hMutexBitMap);
+
+		// dizemos ao sistema que a posição da imagem mudou e temos entao de fazer o refresh da janela
+		InvalidateRect(hWndGlobal, NULL, FALSE);
+		Sleep(1);
+	}
+	return 0;
+
+}
 
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nCmdShow)
 {
@@ -644,6 +697,51 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nC
 		(HINSTANCE)hInstance,
 		0);
 
+	HDC hdc; // representa a propria janela
+	RECT rect;
+
+	// carregar o bitmap
+	hBmp = (HBITMAP)LoadImage(NULL, TEXT("bitmap1.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+	GetObject(hBmp, sizeof(bmp), &bmp); // vai buscar info sobre o handle do bitmap
+
+
+	hdc = GetDC(hWnd);
+	// criamos copia do device context e colocar em memoria
+	bmpDC = CreateCompatibleDC(hdc);
+	// aplicamos o bitmap ao device context
+	SelectObject(bmpDC, hBmp);
+	// SelectObject(bmpDC, hBmpAeroporto);
+
+	ReleaseDC(hWnd, hdc);
+	
+	// EXEMPLO
+	// 800 px de largura, imagem 40px de largura
+	// ponto central da janela 400 px(800/2)
+	// imagem centrada, começar no 380px e acabar no 420 px
+	// (800/2) - (40/2) = 400 - 20 = 380px
+
+	// definir as posicoes inicias da imagem
+	GetClientRect(hWnd, &rect);
+	xBitmap = (rect.right / 2) - (bmp.bmWidth / 2);
+	yBitmap = (rect.bottom / 2) - (bmp.bmHeight / 2);
+
+
+	// limite direito é a largura da janela - largura da imagem
+	limDir = rect.right - bmp.bmWidth;
+	hWndGlobal = hWnd;
+
+	hMutexBitMap = CreateMutex(NULL, FALSE, NULL);
+
+	// criar a thread;
+	CreateThread(NULL, 0, MovimentaImagem, NULL, 0, NULL);
+
+	ShowWindow(hWnd, nCmdShow);	// "hWnd"= handler da janela, devolvido por
+					  // "CreateWindow"; "nCmdShow"= modo de exibição (p.e.
+					  // normal/modal); é passado como parâmetro de WinMain()
+	UpdateWindow(hWnd);		// Refrescar a janela (Windows envia à janela uma
+					  // mensagem para pintar, mostrar dados, (refrescar)
+
+
 	// dadosPartilhados.numOperacoes = 5; // Apenas para testar...
 	LONG_PTR x = SetWindowLongPtr(hWnd, GWLP_USERDATA, (LONG_PTR)&aerialSpace);
 
@@ -663,9 +761,61 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 {
 	AerialSpace* aerialSpace;
 	aerialSpace = (AerialSpace*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
+	HDC hdc;
+	PAINTSTRUCT ps;
+	RECT rect;
 
 	switch (messg)
 	{
+	case WM_PAINT:
+		// Inicio da pintura da janela, que substitui o GetDC
+		hdc = BeginPaint(hWnd, &ps);
+		GetClientRect(hWnd, &rect);
+
+		// se a copia estiver a NULL, significa que é a 1ª vez que estamos a passar no WM_PAINT e estamos a trabalhar com a copia em memoria
+		if (memDC == NULL) {
+			// cria copia em memoria
+			memDC = CreateCompatibleDC(hdc);
+			hBitmapDB = CreateCompatibleBitmap(hdc, rect.right, rect.bottom);
+			// aplicamos na copia em memoria as configs que obtemos com o CreateCompatibleBitmap
+			SelectObject(memDC, hBitmapDB);
+			DeleteObject(hBitmapDB);
+		}
+		// operações feitas na copia que é o memDC
+		FillRect(memDC, &rect, CreateSolidBrush(RGB(50,50, 50)));
+
+		WaitForSingleObject(hMutexBitMap, INFINITE);
+		// operacoes de escrita da imagem - BitBlt
+		BitBlt(memDC, xBitmap, yBitmap, bmp.bmWidth, bmp.bmHeight, bmpDC, 0, 0, SRCCOPY);
+		BitBlt(memDC, xBitmapAeroporto, yBitmapAeroporto, bmpAeroporto.bmWidth, bmpAeroporto.bmHeight, bmpDCAeroporto, 0, 0, SRCCOPY);
+		
+
+		ReleaseMutex(hMutexBitMap);
+
+		// bitblit da copia que esta em memoria para a janela principal - é a unica operação feita na janela principal
+		BitBlt(hdc, 0, 0, rect.right, rect.bottom, memDC, 0, 0, SRCCOPY);
+
+
+		// Encerra a pintura, que substitui o ReleaseDC
+		EndPaint(hWnd, &ps);
+		break;
+
+	case WM_ERASEBKGND:
+		return TRUE;
+		// redimensiona e calcula novamente o centro
+	case WM_SIZE:
+		WaitForSingleObject(hMutexBitMap, INFINITE);
+		xBitmap = (LOWORD(lParam) / 2) - (bmp.bmWidth / 2);
+		yBitmap = (HIWORD(lParam) / 2) - (bmp.bmHeight / 2);
+		//yBitmapAeroporto = (HIWORD(lParam) / 2) - (bmp.bmHeight / 2) + 20;
+		//xBitmapAeroporto = (LOWORD(lParam) / 2) - (bmp.bmWidth / 2) + 20;
+		limDir = LOWORD(lParam) - bmp.bmWidth;
+		limDirAeroporto = LOWORD(lParam) - bmpAeroporto.bmWidth;
+
+		memDC = NULL; // metemos novamente a NULL para que caso haja um resize na janela no WM_PAINT a janela em memoria é sempre atualizada com o tamanho novo
+		ReleaseMutex(hMutexBitMap);
+
+		break;
 		// evento de criação de janela
 	case WM_CREATE:
 		break;
@@ -844,6 +994,21 @@ LRESULT CALLBACK TrataEventosCriarAeroporto(HWND hWnd, UINT messg, WPARAM wParam
 					MessageBox(hWnd, TEXT("Invalid airport"), TEXT("Error"), MB_OK | MB_ICONWARNING);
 				}
 				else {
+				RECT rect;
+				HDC hdcAeroporto;
+				hBmpAeroporto = (HBITMAP)LoadImage(NULL, TEXT("bitmap2.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+				GetObject(hBmpAeroporto, sizeof(bmpAeroporto), &bmpAeroporto);
+				hdcAeroporto = GetDC(hWnd);
+				// criamos copia do device context e colocar em memoria
+				bmpDCAeroporto = CreateCompatibleDC(hdcAeroporto);
+				// aplicamos o bitmap ao device context
+				SelectObject(bmpDCAeroporto, hBmpAeroporto);
+				ReleaseDC(hWnd, hdcAeroporto);
+				GetClientRect(hWnd, &rect);
+				xBitmapAeroporto = coordenates.x;
+				yBitmapAeroporto = coordenates.y;
+				limDirAeroporto = rect.right - bmpAeroporto.bmWidth;
+
 				MessageBox(hWnd, name, TEXT("Created a new airport"), MB_OK | MB_ICONINFORMATION);
 				}
 			}

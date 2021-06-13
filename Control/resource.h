@@ -7,6 +7,8 @@
 #define IDD_VERAEROPORTOS               104
 #define IDD_VER_AVIOES                  105
 #define IDI_ICON1                       108
+#define IDB_BITMAP1                     109
+#define IDB_BITMAP2                     110
 #define IDC_NOME_AERO                   1001
 #define IDC_COORD_X                     1003
 #define IDC_COORD_Y                     1004
@@ -27,7 +29,7 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        109
+#define _APS_NEXT_RESOURCE_VALUE        111
 #define _APS_NEXT_COMMAND_VALUE         40010
 #define _APS_NEXT_CONTROL_VALUE         1007
 #define _APS_NEXT_SYMED_VALUE           101

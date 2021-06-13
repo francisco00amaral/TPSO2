@@ -1,6 +1,6 @@
 ﻿  Control.c
-C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Control\Control.c(175,26): warning C4020: 'findAirplane': too many actual parameters
-C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Control\Control.c(197,48): warning C4029: declared formal parameter list different from definition
-C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Control\Control.c(236): warning C4716: 'refreshData': must return a value
-C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Control\Control.c(349): warning C4716: 'waitingAirplaneInfoThread': must return a value
+C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Control\Control.c(197,26): warning C4020: 'findAirplane': too many actual parameters
+C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Control\Control.c(219,48): warning C4029: declared formal parameter list different from definition
+C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Control\Control.c(258): warning C4716: 'refreshData': must return a value
+C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Control\Control.c(371): warning C4716: 'waitingAirplaneInfoThread': must return a value
   Control.vcxproj -> C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Debug\Control.exe
