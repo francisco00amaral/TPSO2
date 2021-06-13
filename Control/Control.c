@@ -841,15 +841,17 @@ LRESULT CALLBACK TrataEventosCriarAeroporto(HWND hWnd, UINT messg, WPARAM wParam
 
 			if (flag && flagY) {
 				if (createAirport(aerial, name, coordenates) == false) {
-					MessageBox(NULL, TEXT("Invalid airport"), TEXT("Error"), MB_OK | MB_ICONWARNING);
+					MessageBox(hWnd, TEXT("Invalid airport"), TEXT("Error"), MB_OK | MB_ICONWARNING);
 				}
 				else {
-				MessageBox(NULL, name, TEXT("Created a new airport"), MB_OK | MB_ICONINFORMATION);
+				MessageBox(hWnd, name, TEXT("Created a new airport"), MB_OK | MB_ICONINFORMATION);
 				}
 			}
 			else {
-				MessageBox(NULL, TEXT("Error obtaining value"), TEXT("Error"), MB_ICONEXCLAMATION | MB_OK);
+				MessageBox(hWnd, TEXT("Error obtaining value"), TEXT("Error"), MB_ICONEXCLAMATION | MB_OK);
 			}
+			EndDialog(hWnd, 0);
+			return TRUE;
 		}
 		// se carregou no CANCEL
 		else if (LOWORD(wParam) == IDCANCEL)
@@ -859,9 +861,11 @@ LRESULT CALLBACK TrataEventosCriarAeroporto(HWND hWnd, UINT messg, WPARAM wParam
 		}
 
 		break;
-
 	case WM_CLOSE:
 		EndDialog(hWnd, 0);
 		return TRUE;
+	default:
+		break;
 	}
-}
+	return FALSE;
+}	
