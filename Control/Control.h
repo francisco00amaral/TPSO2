@@ -21,13 +21,18 @@ typedef struct {
 	Airport* airports;
 	int nAirports;
 	int maxAirports;
+	InfoPassenger infoPass[5];
+	int nPassangers;
 	//InfoPassenger 
 	//Variaveis de controlo:
 	BOOL endThreadReceiveInfo; //1 caso seja para terminar a thread
 	HANDLE hMutex;
+	HANDLE hMutex2;
 	HANDLE hEvent;
 	HANDLE hEvent2;
 	HANDLE hEvent3;
+	HANDLE hEvent4;
+	HANDLE hEvent5;
 	Map* mapMemory;
 	AirPlane* airPlaneMemory;
 	HANDLE aerialMapObjMap;

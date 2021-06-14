@@ -12,7 +12,7 @@
 // fazer logica
 
 BOOL compare(TCHAR* arg1, TCHAR* arg2) {
-	if (_strcmpi(arg1, arg2) == 0) {
+	if (_tcscmp(arg1, arg2) == 0) {
 		return true;
 	}
 
@@ -348,7 +348,20 @@ int _tmain(int argc, LPTSTR argv[]) {
 			}
 		}
 		else if (compare(command, TEXT("board"))) {
-			// logica de meter os passageiros dentro do aviao -- ainda nao e para esta meta.
+			data.airplane.boarding = true;
+			WaitForSingleObject(data.hMutexMemory, INFINITE);
+			ZeroMemory(data.memory, sizeof(AirPlane));
+
+			CopyMemory(data.memory, &data.airplane, sizeof(AirPlane));
+			SetEvent(data.hEvent);
+			WaitForSingleObject(data.hEvent2, INFINITE);
+			CopyMemory(&data.airplane, data.memory, sizeof(AirPlane));
+			ResetEvent(data.hEvent2);
+			ReleaseMutex(data.hMutexMemory);
+			if (data.airplane.answer == true)
+				_tprintf(TEXT("Boarding correu bem\n"));
+			else
+				_tprintf(TEXT("Boarding correu mal\n"));
 		}
 
 		else if (compare(command, TEXT("fly"))) {

@@ -1,6 +1,8 @@
 ﻿  Control.c
-C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Control\Control.c(203,26): warning C4020: 'findAirplane': too many actual parameters
-C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Control\Control.c(225,48): warning C4029: declared formal parameter list different from definition
-C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Control\Control.c(264): warning C4716: 'refreshData': must return a value
-C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Control\Control.c(377): warning C4716: 'waitingAirplaneInfoThread': must return a value
-  Control.vcxproj -> C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Debug\Control.exe
+D:\joaov\Curso\2º Ano\2º Semestre\SO2\TPSO2\Control\Control.c(313,26): warning C4020: 'findAirplane': too many actual parameters
+D:\joaov\Curso\2º Ano\2º Semestre\SO2\TPSO2\Control\Control.c(335,48): warning C4029: declared formal parameter list different from definition
+D:\joaov\Curso\2º Ano\2º Semestre\SO2\TPSO2\Control\Control.c(173): warning C4715: 'passRequestsThread': not all control paths return a value
+D:\joaov\Curso\2º Ano\2º Semestre\SO2\TPSO2\Control\Control.c(374): warning C4716: 'refreshData': must return a value
+D:\joaov\Curso\2º Ano\2º Semestre\SO2\TPSO2\Control\Control.c(215): warning C4715: 'passRefreshInfo': not all control paths return a value
+D:\joaov\Curso\2º Ano\2º Semestre\SO2\TPSO2\Control\Control.c(487): warning C4716: 'waitingAirplaneInfoThread': must return a value
+  Control.vcxproj -> D:\joaov\Curso\2º Ano\2º Semestre\SO2\TPSO2\Debug\Control.exe

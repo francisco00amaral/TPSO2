@@ -1,3 +1,4 @@
 ﻿  Passenger.c
-C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Passenger\Passenger.c(8,17): warning C4013: '_setmode' undefined; assuming extern returning int
-  Passenger.vcxproj -> C:\Users\Francisco\Desktop\SO2_Projeto\TP_2021\SO2-\Debug\Passenger.exe
+D:\joaov\Curso\2º Ano\2º Semestre\SO2\TPSO2\Passenger\Passenger.c(46,17): warning C4013: '_setmode' undefined; assuming extern returning int
+D:\joaov\Curso\2º Ano\2º Semestre\SO2\TPSO2\Passenger\Passenger.c(124,11): warning C4477: 'wprintf' : format string '%s' requires an argument of type 'unsigned short *', but variadic argument 1 has type 'BOOL'
+  Passenger.vcxproj -> D:\joaov\Curso\2º Ano\2º Semestre\SO2\TPSO2\Debug\Passenger.exe

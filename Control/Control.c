@@ -10,7 +10,8 @@
 #include "resource.h"
 #include "../AirPlane/Airplane.h"
 #include "Control.h"
-
+#define PIPE_CONTROL_TO_PASS TEXT("\\\\.\\pipe\\ControlToPass")
+#define PIPE_PASS_TO_CONTROL TEXT("\\\\.\\pipe\\PassToControl")
 HINSTANCE hInstance;
 //BITMAP
 // uma vez que temos de usar estas vars tanto na main como na funcao de tratamento de eventos
@@ -54,6 +55,7 @@ int createKeyAirplane() {
 	DWORD last;
 
 	if (RegCreateKeyEx(HKEY_CURRENT_USER, key_name, 0, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &key, &last) != ERROR_SUCCESS) {
+		_tprintf(TEXT("Error creating registry key.); \n"));
 		_tprintf(TEXT("Error creating registry key.); \n"));
 		return -1;
 	}
@@ -127,6 +129,91 @@ int createKeyAirport() {
 }
 
 
+DWORD WINAPI passRequestsThread(LPVOID params) {
+	InfoPassenger* info = (InfoPassenger*)params;
+	Passanger pass;
+	DWORD n;
+	HANDLE hEvent = CreateEvent(NULL, TRUE, FALSE, TEXT("Evento4"));
+	if (hEvent == NULL) {
+		return -1;
+	}
+
+	HANDLE hEvent2 = CreateEvent(NULL, TRUE, FALSE, TEXT("Evento5"));
+	if (hEvent2 == NULL) {
+		return -1;
+	}
+
+	while (1) {
+		BOOL ret = ReadFile(info->pipePassToControl, &pass, sizeof(Passanger), &n, NULL);
+
+		if (ret && n > 0) {
+			if (pass.pedidoEntrada == true) {
+				info->passenger.pedidoEntrada = true;
+				_tcscpy_s(info->passenger.airportOrigin, 100, pass.airportOrigin);
+				_tcscpy_s(info->passenger.airportDestiny, 100, pass.airportDestiny);
+				SetEvent(hEvent);
+				WaitForSingleObject(hEvent2, INFINITE);
+				if (info->passenger.answer == false)
+					break;
+				ResetEvent(hEvent2);
+
+			}
+			if (pass.pedidoSaida == true) {
+				info->passenger.pedidoSaida = true;
+				SetEvent(hEvent);
+				break;
+			}
+		}
+		pass.pedidoEntrada = false;
+		pass.pedidoSaida = false;
+	}
+
+	CloseHandle(info->pipeControlToPass);
+	CloseHandle(info->pipePassToControl);
+}
+
+DWORD WINAPI passRefreshInfo(LPVOID params) {
+	AerialSpace* data = (AerialSpace*)params;
+	DWORD n;
+	while (data->endThreadReceiveInfo == false) {
+		WaitForSingleObject(data->hEvent4, INFINITE);
+		WaitForSingleObject(data->hMutex2, INFINITE);
+
+		for (int i = 0; i < data->nPassangers; i++) {
+			int aux = 0;
+			if (data->infoPass[i].passenger.pedidoEntrada == true) {
+				for (int j = 0; j < data->nAirports; j++) {
+					if (_tcscmp(data->airports[j].name, data->infoPass[i].passenger.airportOrigin) == 0)
+						aux++;
+					if (_tcscmp(data->airports[j].name, data->infoPass[i].passenger.airportDestiny) == 0)
+						aux++;
+				}
+				if (aux == 2) {
+					data->infoPass[i].passenger.answer = true;
+				}
+				else {
+					data->infoPass[i].passenger.answer = false;
+					data->infoPass[i] = data->infoPass[data->nPassangers - 1];
+					data->nPassangers--;
+				}
+				if (!WriteFile(data->infoPass[i].pipeControlToPass, &data->infoPass[i].passenger, sizeof(Passanger), &n, NULL))
+					exit(-1);
+				SetEvent(data->hEvent5);
+			}
+			if (data->infoPass[i].passenger.pedidoSaida == true) {
+				aux = 3;
+				data->infoPass[i] = data->infoPass[data->nPassangers - 1];
+				data->nPassangers--;
+			}
+			if (aux == 3)
+				break;
+		}
+
+		ResetEvent(data->hEvent4);
+		ReleaseMutex(data->hMutex2);
+	}
+}
+
 
 DWORD WINAPI waitingPassInfoThread(LPVOID params) {
 	AerialSpace* data = (AerialSpace*)params;
@@ -134,6 +221,29 @@ DWORD WINAPI waitingPassInfoThread(LPVOID params) {
 
 	//Está à espera de info até dizerem para terminar
 	while(data->endThreadReceiveInfo == false) {
+		//Criação dos pipes
+		data->infoPass[data->nPassangers].pipeControlToPass = CreateNamedPipe(PIPE_CONTROL_TO_PASS,
+			PIPE_ACCESS_OUTBOUND, PIPE_WAIT | PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE,
+			PIPE_UNLIMITED_INSTANCES, sizeof(Passanger), sizeof(Passanger), 1000, NULL);
+		if (data->infoPass[data->nPassangers].pipeControlToPass == INVALID_HANDLE_VALUE)
+			exit(-1);
+
+		data->infoPass[data->nPassangers].pipePassToControl = CreateNamedPipe(PIPE_PASS_TO_CONTROL,
+			PIPE_ACCESS_INBOUND, PIPE_WAIT | PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE,
+			PIPE_UNLIMITED_INSTANCES, sizeof(Passanger), sizeof(Passanger), 1000, NULL);
+		if (data->infoPass[data->nPassangers].pipePassToControl == INVALID_HANDLE_VALUE)
+			exit(-1);
+
+		if (!ConnectNamedPipe(data->infoPass[data->nPassangers].pipeControlToPass, NULL) && GetLastError() != 535)
+			exit(-1);
+
+		if (!ConnectNamedPipe(data->infoPass[data->nPassangers].pipePassToControl, NULL) && GetLastError() != 535)
+			exit(-1);
+		HANDLE threadInfoPass = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)passRequestsThread, &data->infoPass[data->nPassangers], 0, NULL);
+		if (threadInfoPass == NULL) {
+			exit(-1);
+		}
+		data->nPassangers++;
 	}
 	return 0;
 }
@@ -357,6 +467,19 @@ DWORD WINAPI waitingAirplaneInfoThread(LPVOID params) {
 				es.answer = true;
 			}
 		}
+		else if (es.boarding == true) {
+			int aux = 0;
+			for (int i = 0; i < data->nPassangers; i++) {
+				if (_tcscmp(data->infoPass[i].passenger.airportDestiny, es.airportDestiny.name) == 0 &&
+					_tcscmp(data->infoPass[i].passenger.airportOrigin, es.InitialAirport) == 0) {
+					if (aux < es.capacity) {
+						aux++;
+						data->infoPass[i].passenger.airplane = es.id;
+					}
+				}
+			}
+			es.answer = true;
+		}
 		else if (es.requestFlying == true) {
 						
 			for (int i = 0; i < data->nAirPlanes; i++) {
@@ -494,11 +617,7 @@ DWORD WINAPI MovimentaImagem(LPVOID lParam) {
 		WaitForSingleObject(hMutexBitMap, INFINITE);
 
 		// movimentação
-		for (int i = 0; i < data->nAirPlanes; i++) {
-			if (data->airPlanes[i].flying == 1) {
-				xBitmap = xBitmap + data->airPlanes[i].coordenates.x;
-			}
-		}
+		xBitmap = xBitmap + (dir * salto);
 
 		//fronteira À esquerda
 		if (xBitmap <= 0) {
@@ -506,7 +625,7 @@ DWORD WINAPI MovimentaImagem(LPVOID lParam) {
 			dir = 1;
 		}
 		// limite direito
-		else if (xBitmap >= 1000) {
+		else if (xBitmap >= limDir) {
 			xBitmap = limDir;
 			dir = -1;
 		}
@@ -553,6 +672,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nC
 	//Criação das variaveis
 	aerialSpace.maxAirPlanes = createKeyAirplane();
 	aerialSpace.maxAirports = createKeyAirport();
+	aerialSpace.nPassangers = 0;
 
 	aerialSpace.airports = malloc(aerialSpace.maxAirports * sizeof(Airport)); // aloco memoria para max aeroportos;
 	if (aerialSpace.airports == NULL) {
@@ -605,9 +725,27 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nC
 		return -1;
 	}
 
+	aerialSpace.hEvent4 = CreateEvent(NULL, TRUE, FALSE, TEXT("Evento4"));
+	if (aerialSpace.hEvent4 == NULL) {
+		_tprintf(TEXT("Erro a criar o evento"));
+		return -1;
+	}
+
+	aerialSpace.hEvent5 = CreateEvent(NULL, TRUE, FALSE, TEXT("Evento5"));
+	if (aerialSpace.hEvent5 == NULL) {
+		_tprintf(TEXT("Erro a criar o evento"));
+		return -1;
+	}
+
 
 	aerialSpace.hMutex = CreateMutex(NULL, FALSE, TEXT("SO2_MUTEX"));
 	if (aerialSpace.hMutex == NULL) {
+		_tprintf(TEXT("Erro a criar o mutex"));
+		return -1;
+	}
+
+	aerialSpace.hMutex2 = CreateMutex(NULL, FALSE, TEXT("SO2_MUTEX2"));
+	if (aerialSpace.hMutex2 == NULL) {
 		_tprintf(TEXT("Erro a criar o mutex"));
 		return -1;
 	}
@@ -678,6 +816,22 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nC
 		return -1;
 	}
 
+	HANDLE hThread6;
+	DWORD idThread6;
+	hThread6 = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)waitingPassInfoThread, &aerialSpace, 0, &idThread6);
+	if (hThread6 == NULL) {
+		_tprintf(TEXT("Erro a criar a thread com id: %d"), idThread6);
+		return -1;
+	}
+
+	HANDLE hThread7;
+	DWORD idThread7;
+	hThread7 = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)passRefreshInfo, &aerialSpace, 0, &idThread7);
+	if (hThread6 == NULL) {
+		_tprintf(TEXT("Erro a criar a thread com id: %d"), idThread7);
+		return -1;
+	}
+
 	aerialSpace.hSemEscrita = CreateSemaphore(NULL, TAM_BUFFER, TAM_BUFFER, TEXT("SO2_SEMAFORO_ESCRITA"));
 
 	//criar semaforo que conta as leituras
@@ -741,16 +895,22 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nC
 		(HINSTANCE)hInstance,
 		0);
 
-
 	HDC hdc; // representa a propria janela
 	RECT rect;
 
 	// carregar o bitmap
+	hBmp = (HBITMAP)LoadImage(NULL, TEXT("bitmap1.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+	GetObject(hBmp, sizeof(bmp), &bmp); // vai buscar info sobre o handle do bitmap
+
 	hdc = GetDC(hWnd);
-	
+	// criamos copia do device context e colocar em memoria
+	bmpDC = CreateCompatibleDC(hdc);
+	// aplicamos o bitmap ao device context
+	SelectObject(bmpDC, hBmp);
+	// SelectObject(bmpDC, hBmpAeroporto);
 
 	ReleaseDC(hWnd, hdc);
-	
+
 	// EXEMPLO
 	// 800 px de largura, imagem 40px de largura
 	// ponto central da janela 400 px(800/2)
@@ -782,13 +942,11 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nC
 	// dadosPartilhados.numOperacoes = 5; // Apenas para testar...
 	LONG_PTR x = SetWindowLongPtr(hWnd, GWLP_USERDATA, (LONG_PTR)&aerialSpace);
 
-	ShowWindow(hWnd, nCmdShow);
-
 
 	while (GetMessage(&lpMsg, NULL, 0, 0))
 	{
-			TranslateMessage(&lpMsg);
-			DispatchMessage(&lpMsg);	
+		TranslateMessage(&lpMsg);
+		DispatchMessage(&lpMsg);
 	}
 
 	return((int)lpMsg.wParam);
@@ -819,17 +977,17 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 			DeleteObject(hBitmapDB);
 		}
 		// operações feitas na copia que é o memDC
-		FillRect(memDC, &rect, CreateSolidBrush(RGB(50,50, 50)));
+		FillRect(memDC, &rect, CreateSolidBrush(RGB(50, 50, 50)));
 
 		WaitForSingleObject(hMutexBitMap, INFINITE);
 		// operacoes de escrita da imagem - BitBlt
-		for (int i = 0; i < totalAvioes; i++) {
-			BitBlt(memDC, 500, 500, bmp.bmWidth, bmp.bmHeight, bmpDC, 0, 0, SRCCOPY);
-		}
+
+
+		BitBlt(memDC, xBitmap, yBitmap, bmp.bmWidth, bmp.bmHeight, bmpDC, 0, 0, SRCCOPY);
+
 		for (int i = 0; i < total; i++) {
 			BitBlt(memDC, x[i], y[i], bmpAeroporto.bmWidth, bmpAeroporto.bmHeight, bmpDCAeroporto, 0, 0, SRCCOPY);
 		}
-		
 
 		ReleaseMutex(hMutexBitMap);
 
@@ -872,14 +1030,14 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 			// 4º serve para tratar os eventos das dialogbox
 			DialogBox(NULL, MAKEINTRESOURCE(ID_CRIAR_AEROPORTO), hWnd, TrataEventosCriarAeroporto);
 			break;
-		case IDM_LISTAVIOES :
+		case IDM_LISTAVIOES:
 			DialogBox(NULL, MAKEINTRESOURCE(IDD_VER_AVIOES), hWnd, TrataEventosVerAvioes);
 			break;
-		case IDM_LISTAEROPORTOS :
+		case IDM_LISTAEROPORTOS:
 			DialogBox(NULL, MAKEINTRESOURCE(IDD_VERAEROPORTOS), hWnd, TrataEventosVerAeroportos);
 			break;
 		}
-			
+
 		break;
 
 	case WM_DESTROY:
@@ -933,7 +1091,7 @@ LRESULT CALLBACK TrataEventosVerAvioes(HWND hWnd, UINT messg, WPARAM wParam, LPA
 			_stprintf(message, TEXT("Avião %d na coordenada x: %d y:%d"), aerial->airPlanes[i].id, aerial->airPlanes[i].coordenates.x, aerial->airPlanes[i].coordenates.y);
 			SendMessage(hwndList, LB_ADDSTRING, 0, (LPARAM)message);
 		}
-			
+
 		break;
 
 	case WM_COMMAND:
@@ -1009,7 +1167,7 @@ LRESULT CALLBACK TrataEventosVerAeroportos(HWND hWnd, UINT messg, WPARAM wParam,
 
 LRESULT CALLBACK TrataEventosCriarAeroporto(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam) {
 	HWND aux = GetParent(hWnd); // GetParent vai servir para depois conseguir ir buscar a struct declarada no main e nao usar vars globais
-	AerialSpace* aerial = (AerialSpace *)GetWindowLongPtr(aux, GWLP_USERDATA);
+	AerialSpace* aerial = (AerialSpace*)GetWindowLongPtr(aux, GWLP_USERDATA);
 	TCHAR name[100];
 	Coordenates coordenates;
 	coordenates.x = 0;
@@ -1035,26 +1193,26 @@ LRESULT CALLBACK TrataEventosCriarAeroporto(HWND hWnd, UINT messg, WPARAM wParam
 					MessageBox(hWnd, TEXT("Invalid airport"), TEXT("Error"), MB_OK | MB_ICONWARNING);
 				}
 				else {
-				RECT rect;
-				HDC hdcAeroporto;
-				hBmpAeroporto = (HBITMAP)LoadImage(NULL, TEXT("bitmap2.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-				GetObject(hBmpAeroporto, sizeof(bmpAeroporto), &bmpAeroporto);
-				hdcAeroporto = GetDC(hWnd);
-				// criamos copia do device context e colocar em memoria
-				bmpDCAeroporto = CreateCompatibleDC(hdcAeroporto);
-				// aplicamos o bitmap ao device context
-				SelectObject(bmpDCAeroporto, hBmpAeroporto);
-				ReleaseDC(hWnd, hdcAeroporto);
-				GetClientRect(hWnd, &rect);
-				
-				total = aerial->nAirports;
+					RECT rect;
+					HDC hdcAeroporto;
+					hBmpAeroporto = (HBITMAP)LoadImage(NULL, TEXT("bitmap2.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+					GetObject(hBmpAeroporto, sizeof(bmpAeroporto), &bmpAeroporto);
+					hdcAeroporto = GetDC(hWnd);
+					// criamos copia do device context e colocar em memoria
+					bmpDCAeroporto = CreateCompatibleDC(hdcAeroporto);
+					// aplicamos o bitmap ao device context
+					SelectObject(bmpDCAeroporto, hBmpAeroporto);
+					ReleaseDC(hWnd, hdcAeroporto);
+					GetClientRect(hWnd, &rect);
 
-				x[total-1] = coordenates.x;
-				y[total-1] = coordenates.y;
-				
-				limDirAeroporto = rect.right - bmpAeroporto.bmWidth;
+					total = aerial->nAirports;
 
-				MessageBox(hWnd, name, TEXT("Created a new airport"), MB_OK | MB_ICONINFORMATION);
+					x[total - 1] = coordenates.x;
+					y[total - 1] = coordenates.y;
+
+					limDirAeroporto = rect.right - bmpAeroporto.bmWidth;
+
+					MessageBox(hWnd, name, TEXT("Created a new airport"), MB_OK | MB_ICONINFORMATION);
 				}
 			}
 			else {
@@ -1078,4 +1236,5 @@ LRESULT CALLBACK TrataEventosCriarAeroporto(HWND hWnd, UINT messg, WPARAM wParam
 		break;
 	}
 	return FALSE;
-}	
+}
+	
